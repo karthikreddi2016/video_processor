@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Uploads & Outputs
+backend/uploads/
+backend/outputs/
+
+# Build
+dist/
+build/
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*. swp
+*.swo
+*~
+
+# MongoDB
+data/
+
+# Temporary files
+tmp/
+temp/

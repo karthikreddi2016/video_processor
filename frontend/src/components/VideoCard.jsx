@@ -1,0 +1,65 @@
+import { useState } from 'react'
+import TaskCreator from './TaskCreator'
+import TaskList from './TaskList'
+import './VideoCard.css'
+
+function VideoCard({ video, onTaskCreated }) {
+  const [showTaskCreator, setShowTaskCreator] = useState(false)
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+  }
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString)
+    return date.toLocaleString()
+  }
+
+  const handleTaskCreated = () => {
+    setShowTaskCreator(false)
+    if (onTaskCreated) {
+      onTaskCreated()
+    }
+  }
+
+  return (
+    <div className="video-card">
+      <div className="video-header">
+        <div className="video-info">
+          <h3 className="video-title">📹 {video.originalFilename}</h3>
+          <div className="video-meta">
+            <span className="meta-item">
+              💾 {formatFileSize(video. fileSize)}
+            </span>
+            <span className="meta-item">
+              🕐 {formatDate(video.uploadedAt)}
+            </span>
+          </div>
+        </div>
+        <button
+          onClick={() => setShowTaskCreator(! showTaskCreator)}
+          className="create-task-button"
+        >
+          {showTaskCreator ? '✕ Cancel' : '➕ Create Tasks'}
+        </button>
+      </div>
+
+      {showTaskCreator && (
+        <div className="task-creator-container">
+          <TaskCreator 
+            videoId={video._id} 
+            onTaskCreated={handleTaskCreated}
+          />
+        </div>
+      )}
+
+      <TaskList tasks={video.tasks || []} />
+    </div>
+  )
+}
+
+export default VideoCard

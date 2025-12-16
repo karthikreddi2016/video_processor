@@ -1,0 +1,20 @@
+.video-list {
+  display:  grid;
+  gap: 20px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.empty-state-icon {
+  font-size: 4rem;
+  margin-bottom:  15px;
+  opacity: 0.3;
+}
+
+.empty-state-text {
+  font-size: 1.2rem;
+  color: #999;
+}
