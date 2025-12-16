@@ -5,6 +5,7 @@ const fs = require('fs').promises;
 const taskService = require('../services/taskService');
 const queueService = require('../services/queueService');
 const { validate, validations } = require('../middleware/validation');
+const Task = require('../models/Task');
 
 /**
  * GET /api/tasks/: taskId
@@ -12,8 +13,9 @@ const { validate, validations } = require('../middleware/validation');
  */
 router.get('/:taskId', validate(validations.taskId), async (req, res, next) => {
   try {
-    const task = await taskService.getTaskById(req.params.taskId);
-
+    const { taskId } = req.params;
+    const task = await taskService.getTaskById(taskId);
+    
     if (!task) {
       return res.status(404).json({
         success: false,
@@ -23,7 +25,7 @@ router.get('/:taskId', validate(validations.taskId), async (req, res, next) => {
 
     res.json({
       success: true,
-      data: task
+      data: { task }
     });
   } catch (error) {
     next(error);
@@ -32,12 +34,13 @@ router.get('/:taskId', validate(validations.taskId), async (req, res, next) => {
 
 /**
  * GET /api/tasks/: taskId/status
- * Get lightweight task status
+ * Get task status
  */
 router.get('/:taskId/status', validate(validations.taskId), async (req, res, next) => {
   try {
-    const task = await taskService.getTaskById(req.params.taskId);
-
+    const { taskId } = req.params;
+    const task = await taskService.getTaskById(taskId);
+    
     if (!task) {
       return res.status(404).json({
         success: false,
@@ -48,7 +51,6 @@ router.get('/:taskId/status', validate(validations.taskId), async (req, res, nex
     res.json({
       success: true,
       data: {
-        taskId: task._id,
         state: task.state,
         progress: task.progress,
         errorMessage: task.errorMessage
@@ -60,13 +62,14 @@ router.get('/:taskId/status', validate(validations.taskId), async (req, res, nex
 });
 
 /**
- * GET /api/tasks/:taskId/download
+ * GET /api/tasks/: taskId/download
  * Download processed video
  */
 router.get('/:taskId/download', validate(validations.taskId), async (req, res, next) => {
   try {
-    const task = await taskService.getTaskById(req.params.taskId);
-
+    const { taskId } = req.params;
+    const task = await taskService.getTaskById(taskId);
+    
     if (!task) {
       return res.status(404).json({
         success: false,
@@ -75,53 +78,90 @@ router.get('/:taskId/download', validate(validations.taskId), async (req, res, n
     }
 
     if (task.state !== 'COMPLETED') {
-      return res. status(400).json({
+      return res.status(400).json({
         success: false,
-        message:  `Task is not completed. Current state: ${task.state}`
+        message: 'Task is not completed yet'
       });
     }
 
-    if (!task.outputFilePath) {
-      return res.status(404).json({
+    if (! task.outputPath) {
+      return res. status(404).json({
         success: false,
         message: 'Output file not found'
       });
     }
 
+    const filePath = path.resolve(task. outputPath);
+    
     // Check if file exists
     try {
-      await fs.access(task.outputFilePath);
+      await fs.access(filePath);
     } catch (error) {
-      return res.status(404).json({
+      return res. status(404).json({
         success: false,
-        message: 'Output file not found on server'
+        message:  'Output file not found on disk'
       });
     }
 
+    // Set headers for download
+    const fileName = path.basename(filePath);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Type', 'video/mp4');
+
     // Stream the file
-    const filename = path.basename(task.outputFilePath);
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Type', 'application/octet-stream');
-    
-    const fileStream = require('fs').createReadStream(task.outputFilePath);
-    fileStream.pipe(res);
+    res.sendFile(filePath);
   } catch (error) {
     next(error);
   }
 });
 
 /**
- * GET /api/tasks/active
- * Get all active tasks
+ * DELETE /api/tasks/:taskId
+ * Delete a task
  */
-router. get('/', async (req, res, next) => {
+router.delete('/:taskId', validate(validations.taskId), async (req, res, next) => {
   try {
-    const tasks = await taskService.getActiveTasks();
+    const { taskId } = req.params;
+
+    const task = await Task.findById(taskId);
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: 'Task not found'
+      });
+    }
+
+    // Delete output file if it exists
+    if (task.outputPath) {
+      try {
+        const filePath = path.resolve(task.outputPath);
+        await fs.unlink(filePath);
+        console.log(`🗑️ Deleted file: ${filePath}`);
+      } catch (error) {
+        console.warn(`⚠️ Could not delete file: ${task.outputPath}`, error.message);
+      }
+    }
+
+    // Remove job from queue if it's queued or processing
+    if (task.state === 'QUEUED' || task.state === 'PROCESSING') {
+      try {
+        const job = await queueService.videoQueue.getJob(task.jobId);
+        if (job) {
+          await job.remove();
+          console.log(`🗑️ Removed job from queue: ${task.jobId}`);
+        }
+      } catch (error) {
+        console.warn(`⚠️ Could not remove job from queue: ${task.jobId}`, error.message);
+      }
+    }
+
+    // Delete the task from database
+    await Task.findByIdAndDelete(taskId);
+    console.log(`🗑️ Task deleted: ${taskId}`);
 
     res.json({
       success: true,
-      count: tasks.length,
-      data: { tasks }
+      message: 'Task deleted successfully'
     });
   } catch (error) {
     next(error);

@@ -18,6 +18,7 @@ function VideoList({ videos, onTaskCreated }) {
           key={video._id} 
           video={video} 
           onTaskCreated={onTaskCreated}
+          onVideoDeleted={onTaskCreated}
         />
       ))}
     </div>

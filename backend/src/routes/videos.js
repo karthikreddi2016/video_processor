@@ -147,3 +147,30 @@ router.post(
 );
 
 module.exports = router;
+/**
+ * DELETE /api/videos/:videoId
+ * Delete a video and all its tasks
+ */
+router.delete('/:videoId', validate(validations.videoId), async (req, res, next) => {
+  try {
+    const { videoId } = req.params;
+
+    const video = await videoService.getVideoById(videoId);
+    if (!video) {
+      return res.status(404).json({
+        success: false,
+        message: 'Video not found'
+      });
+    }
+
+    // Delete video (this also deletes associated tasks via the service)
+    await videoService.deleteVideo(videoId);
+
+    res.json({
+      success: true,
+      message: 'Video and all associated tasks deleted successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+});

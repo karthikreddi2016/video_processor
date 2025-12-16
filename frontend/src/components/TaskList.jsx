@@ -1,7 +1,7 @@
 import TaskCard from './TaskCard'
 import './TaskList.css'
 
-function TaskList({ tasks }) {
+function TaskList({ tasks, onTaskDeleted }) {
   if (!tasks || tasks.length === 0) {
     return (
       <div className="no-tasks">
@@ -13,7 +13,11 @@ function TaskList({ tasks }) {
   return (
     <div className="task-list">
       {tasks.map((task) => (
-        <TaskCard key={task._id} task={task} />
+        <TaskCard 
+          key={task._id} 
+          task={task}
+          onTaskDeleted={onTaskDeleted}
+        />
       ))}
     </div>
   )
